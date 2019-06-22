@@ -1,0 +1,24 @@
+{
+  "name": "lambda",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "testWithCoverage": "jest --coverage"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "parcel": "^1.12.3",
+    "parsimmon": "^1.12.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^24.0.15",
+    "@types/parsimmon": "^1.10.0",
+    "@types/pegjs": "^0.10.1",
+    "jest": "^24.8.0",
+    "ts-jest": "^24.0.2",
+    "typescript": "^3.5.2"
+  }
+}
