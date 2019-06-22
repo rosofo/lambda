@@ -1,5 +1,7 @@
 import * as L from '../src/lambda';
 
+const interpret = (s: string) => L.print(L.evaluate(L.parse(s)));
+
 describe('evaluate', function() {
     it("beta reduces `(\\x.x)y` to `y`", function() {
         let result = L.evaluate({kind: 'ap', a: {kind: 'l', head: 'x', body: 'x'}, b: 'y'});
@@ -7,9 +9,50 @@ describe('evaluate', function() {
     });
 
     it("applies succ to zero to get one", function() {
-        expect(L.print(L.evaluate(L.parse("(\\wyx.y(wyx))\\sz.z"))))
+        expect(interpret(L.succ + L.zero))
             .toBe("\\y.\\x.yx");
     })
+
+    it("maintains alpha-equivalence", function() {
+        expect(interpret("(\\x.\\y.x)y")).not.toBe("\\y.y");
+    })
+})
+
+describe('DepthFirst', function() {
+    let t
+
+    it("acts as identity when forward is iterated until it returns false", function() {
+        let input1 = L.succ + L.zero;
+        let parsed = L.parse(input1) as L.application;
+        t = new L.DepthFirst(parsed);
+        let notDone = true;
+        while (notDone) {
+            notDone = t.forward();
+        }
+
+        expect(t.current).toMatchObject(parsed);
+    })
+
+    it("visits everything not contained within further lambdas",
+       function() {
+           let input2 = "(\\a.a\\z.z)b(\\c.cy)de"
+           let parsed = L.parse(input2);
+           t = new L.DepthFirst(parsed);
+           let visited: string[] = [];
+           let notDone = true;
+
+           while (notDone) {
+               if (L.isLambda(t.current)) {
+                   visited.push(t.current.head);
+               } else if (typeof t.current == "string") {
+                   visited.push(t.current);
+               }
+               notDone = t.forward();
+           }
+
+           visited.sort()
+           expect(visited).toMatchObject(['a','b','c','d','e']);
+       })
 })
 
 describe('bind', function() {
@@ -49,4 +92,8 @@ describe('parse', function() {
                                       b: 'y'}}};
         expect(result).toMatchObject(expected);
     });
+
+    it("makes application left-assoc and abstraction right-assoc", function() {
+        expect(L.print(L.parse("\\x.xz\\y.xy"))).toBe("\\x.(xz)(\\y.xy)");
+    })
 });

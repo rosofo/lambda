@@ -1,5 +1,10 @@
 import * as P from 'parsimmon';
 
+export const identity = "(\\x.x)"
+export const succ = "(\\wyx.y(wyx))";
+export const zero = "(\\sz.z)";
+export const add = (a: string, b: string) => a + "(\\mnfx.mf(nfx))" + b;
+
 export type lambda = {
     kind: "l",
     head: name,
@@ -16,7 +21,109 @@ export type application = {
 
 export type expression = lambda | name | application;
 
+export const interpret = (s: string) => print(evaluate(parse(s)));
+
 export function evaluate(expr: expression): expression {
+    let t = new DepthFirst(expr);
+    let notDone = true;
+
+    while (notDone) {
+        if (isApplication(t.current)) {
+            if (isLambda(t.current.a)) {
+                t.current = bind(t.current.a, t.current.b);
+                if (isLambda(t.current)) {
+                    if (last(t.stack)) {
+                        t.up();
+                        continue;
+                    } else {
+                        t.current = evaluate(t.current);
+                    }
+                } else {
+                    continue;
+                }
+            } else if (isLambda(t.current.b)) t.current = evaluate(t.current);
+        } else if (isLambda(t.current)) {
+            t.current.body = evaluate(t.current.body);
+        }
+        notDone = t.forward();
+    }
+
+    return t.current;
+}
+
+
+// traversal
+
+type node = {ap: application, branchToNext: "left" | "right"};
+
+export class Traverser {
+    current: expression;
+    stack: node[];
+
+    constructor(expr: expression) {
+        this.current = expr;
+        this.stack = [];
+    }
+
+    left() {
+        if (isApplication(this.current)) {
+            this.stack.push({ap: this.current, branchToNext: "left"});
+            this.current = this.current.a;
+            return true;
+        }
+        else return false;
+    }
+
+    right() {
+        if (isApplication(this.current)) {
+            this.stack.push({ap: this.current, branchToNext: "right"});
+            this.current = this.current.b;
+            return true;
+        } else return false;
+    }
+
+    up() {
+        let above = this.stack.pop();
+        if (above) {
+            if (above.branchToNext == "left") {
+                above.ap.a = this.current;
+            } else {
+                above.ap.b = this.current;
+            }
+            this.current = above.ap;
+            return true;
+        } else return false;
+    }
+}
+
+export class DepthFirst extends Traverser {
+    forward() {
+        if (isApplication(this.current)) this.left();
+        else {
+            let above = last(this.stack);
+            if (above) {
+                if (above.branchToNext == "left") {
+                    this.up();
+                    this.right();
+                } else {
+                    while (above && above.branchToNext == "right") {
+                        this.up();
+                        above = last(this.stack);
+                    }
+                    if (above) {
+                        this.up();
+                        this.right();
+                    } else {
+                        return false;
+                    }
+                }
+            } else {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }
 
 function isNormal(expr: expression): boolean {
@@ -42,7 +149,7 @@ function newApplication(a: expression, b: expression): application {
     return {kind: 'ap', a, b};
 }
 
-function isApplication(expr: expression): expr is application {
+export function isApplication(expr: expression): expr is application {
     if (typeof expr == "string" || expr.kind == "l") {
         return false;
     } else {
@@ -50,7 +157,7 @@ function isApplication(expr: expression): expr is application {
     }
 }
 
-function isLambda(expr: expression): expr is lambda {
+export function isLambda(expr: expression): expr is lambda {
     if (typeof expr == "string" || expr.kind == "ap") {
         return false;
     } else {
