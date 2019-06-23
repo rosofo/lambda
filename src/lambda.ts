@@ -146,21 +146,6 @@ export class DepthFirst extends Traverser {
     }
 }
 
-function isNormal(expr: expression): boolean {
-    if (isApplication(expr)) {
-        if (isLambda(expr.a)) {
-            return false;
-        } else {
-            return isNormal(expr.a) && isNormal(expr.b);
-        }
-    } else if (isLambda(expr)) {
-        return isNormal(expr.body);
-    } else {
-        return true;
-    }
-}
-
-
 function newLambda(head: name, body: expression): lambda {
     return {kind: 'l', head, body};
 }
@@ -170,19 +155,11 @@ function newApplication(a: expression, b: expression): application {
 }
 
 export function isApplication(expr: expression): expr is application {
-    if (typeof expr == "string" || expr.kind == "l") {
-        return false;
-    } else {
-        return true;
-    }
+    return !(typeof expr == "string" || expr.kind == "l");
 }
 
 export function isLambda(expr: expression): expr is lambda {
-    if (typeof expr == "string" || expr.kind == "ap") {
-        return false;
-    } else {
-        return true;
-    }
+    return !(typeof expr == "string" || expr.kind == "ap");
 }
 
 export function bind(lambda: lambda, expr: expression): expression {
@@ -225,9 +202,8 @@ export function print(expr: expression): string {
 // parsing
 
 export function parse(string: string): expression {
-    return Lang.Term.tryParse(string);
+    return Lang.Term.tryParse(string.replace(/\s/g, ''));
 }
-
 
 const Lang = P.createLanguage<{
     Term: expression,
