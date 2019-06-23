@@ -21,7 +21,7 @@ export type application = {
 
 export type expression = lambda | name | application;
 
-export const interpret = (s: string) => print(evaluate(parse(s)));
+export const interpret = (s: string) => evaluate(parse(s));
 
 export function evaluate(expr: expression): expression {
     let gen = evaluateGen(expr);
@@ -35,6 +35,8 @@ export function evaluate(expr: expression): expression {
 }
 
 export function* evaluateGen(expr: expression): IterableIterator<expression> {
+    yield expr;
+
     let t = new DepthFirst(expr);
     let done = false;
 
