@@ -24,44 +24,52 @@ export type expression = lambda | name | application;
 export const interpret = (s: string) => print(evaluate(parse(s)));
 
 export function evaluate(expr: expression): expression {
-    let contexts: DepthFirst[] = []; // where we were when entering a scope
+    let gen = evaluateGen(expr);
+    let result;
+    let next = gen.next();
+    while (!next.done) {
+        result = next.value;
+        next = gen.next();
+    }
+    return result as expression;
+}
+
+export function* evaluateGen(expr: expression): IterableIterator<expression> {
     let t = new DepthFirst(expr);
     let done = false;
 
-    function enterScope(expr: lambda) {
-        contexts.push(t);
-        t = new DepthFirst(expr.body);
-    }
-
-    function exitScope() {
-        let outer = contexts.pop();
-        if (outer && isLambda(outer.current)) {
-            outer.current.body = t.current;
-            t = outer;
-        }
-    }
-
     while (!done) {
         if (isLambda(t.current)) {
-            let sibling = t.rightSibling;
-            if (sibling) {
-                let result = bind(t.current, sibling);
+            if (t.rightSibling) {
+                let result = bind(t.current, t.rightSibling);
                 t.up();
                 t.current = result;
+                let top;
+                let topContext = t.contexts[0];
+                if (topContext) {
+                    if (topContext.stack[0]) {
+                        top = topContext.stack[0].ap;
+                    } else {
+                        top = topContext.current;
+                    }
+                } else if (t.stack[0]){
+                    top = t.stack[0].ap;
+                } else {
+                    top = t.current;
+                }
+                yield top;
             } else {
-                enterScope(t.current);
+                t.enterScope();
             }
         } else {
             done = t.forward();
-            if (done && contexts.length) {
-                while (!t.stack.length && contexts.length) exitScope();
-                if (!contexts.length) break;
+            if (done && t.contexts.length) {
+                while (!t.stack.length && t.contexts.length) t.exitScope();
+                if (!t.contexts.length) break;
                 done = false;
             }
         }
     }
-
-    return t.current;
 }
 
 
@@ -70,12 +78,35 @@ export function evaluate(expr: expression): expression {
 type node = {ap: application, branchToNext: "left" | "right"};
 
 export class Traverser {
-    current: expression;
+    _current: expression;
     stack: node[];
+    contexts: {current: expression, stack: node[]}[] = [];
 
     constructor(expr: expression) {
-        this.current = expr;
+        this._current = expr;
         this.stack = [];
+        this.contexts = [];
+    }
+
+    set current(expr: expression) {
+        this._current = expr;
+
+        let above;
+        if (this.stack[0]) above = last(this.stack);
+        else {
+            for (let i = this.contexts.length - 1; i > 0; i--) {
+                above = last(this.contexts[i].stack);
+                if (above) break;
+            }
+        }
+        if (above) {
+            if (above.branchToNext == "left") above.ap.a = expr;
+            else above.ap.b = expr;
+        }
+    }
+
+    get current() {
+        return this._current;
     }
 
     get rightSibling(): expression | undefined {
@@ -85,13 +116,13 @@ export class Traverser {
         }
     }
 
+
     left() {
         if (isApplication(this.current)) {
             this.stack.push({ap: this.current, branchToNext: "left"});
             this.current = this.current.a;
             return true;
-        }
-        else return false;
+        } else return false;
     }
 
     right() {
@@ -105,14 +136,25 @@ export class Traverser {
     up() {
         let above = this.stack.pop();
         if (above) {
-            if (above.branchToNext == "left") {
-                above.ap.a = this.current;
-            } else {
-                above.ap.b = this.current;
-            }
             this.current = above.ap;
             return true;
         } else return false;
+    }
+
+    enterScope() {
+        if (isLambda(this.current)) {
+            this.contexts.push({current: this.current, stack: this.stack});
+            this._current = this.current.body;
+            this.stack = [];
+        }
+    }
+
+    exitScope() {
+        let outer = this.contexts.pop();
+        if (outer && isLambda(outer.current) && !this.stack.length) {
+            this.current = outer.current;
+            this.stack = outer.stack;
+        }
     }
 }
 

@@ -55,6 +55,22 @@ describe('DepthFirst', function() {
        })
 })
 
+describe('Traverser', function() {
+    it("mutates overall expression when current is set", function() {
+        let input = L.succ + L.zero;
+        let parsed = L.parse(input) as L.application;
+        let t = new L.Traverser(parsed);
+        t.left();
+        let bound = L.bind(t.current as L.lambda, t.rightSibling as L.expression);
+        t.current = bound;
+
+        t.up();
+        let result = t.current as L.application;
+        expect(result.a).toMatchObject(bound);
+        expect(parsed.a).toMatchObject(bound);
+    });
+});
+
 describe('bind', function() {
     it("uses lexical scoping", function() {
         // this is equivalent to `\x.x(\x.x)x`
