@@ -25,9 +25,9 @@ describe('DepthFirst', function() {
         let input1 = L.succ + L.zero;
         let parsed = L.parse(input1) as L.application;
         t = new L.DepthFirst(parsed);
-        let notDone = true;
-        while (notDone) {
-            notDone = t.forward();
+        let done = true;
+        while (!done) {
+            done = t.forward();
         }
 
         expect(t.current).toMatchObject(parsed);
@@ -39,15 +39,15 @@ describe('DepthFirst', function() {
            let parsed = L.parse(input2);
            t = new L.DepthFirst(parsed);
            let visited: string[] = [];
-           let notDone = true;
+           let done = false;
 
-           while (notDone) {
+           while (!done) {
                if (L.isLambda(t.current)) {
                    visited.push(t.current.head);
                } else if (typeof t.current == "string") {
                    visited.push(t.current);
                }
-               notDone = t.forward();
+               done = t.forward();
            }
 
            visited.sort()

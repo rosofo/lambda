@@ -24,28 +24,41 @@ export type expression = lambda | name | application;
 export const interpret = (s: string) => print(evaluate(parse(s)));
 
 export function evaluate(expr: expression): expression {
+    let contexts: DepthFirst[] = []; // where we were when entering a scope
     let t = new DepthFirst(expr);
-    let notDone = true;
+    let done = false;
 
-    while (notDone) {
-        if (isApplication(t.current)) {
-            if (isLambda(t.current.a)) {
-                t.current = bind(t.current.a, t.current.b);
-                if (isLambda(t.current)) {
-                    if (last(t.stack)) {
-                        t.up();
-                        continue;
-                    } else {
-                        t.current = evaluate(t.current);
-                    }
-                } else {
-                    continue;
-                }
-            } else if (isLambda(t.current.b)) t.current = evaluate(t.current);
-        } else if (isLambda(t.current)) {
-            t.current.body = evaluate(t.current.body);
+    function enterScope(expr: lambda) {
+        contexts.push(t);
+        t = new DepthFirst(expr.body);
+    }
+
+    function exitScope() {
+        let outer = contexts.pop();
+        if (outer && isLambda(outer.current)) {
+            outer.current.body = t.current;
+            t = outer;
         }
-        notDone = t.forward();
+    }
+
+    while (!done) {
+        if (isLambda(t.current)) {
+            let sibling = t.rightSibling;
+            if (sibling) {
+                let result = bind(t.current, sibling);
+                t.up();
+                t.current = result;
+            } else {
+                enterScope(t.current);
+            }
+        } else {
+            done = t.forward();
+            if (done && contexts.length) {
+                while (!t.stack.length && contexts.length) exitScope();
+                if (!contexts.length) break;
+                done = false;
+            }
+        }
     }
 
     return t.current;
@@ -63,6 +76,13 @@ export class Traverser {
     constructor(expr: expression) {
         this.current = expr;
         this.stack = [];
+    }
+
+    get rightSibling(): expression | undefined {
+        let parent = last(this.stack);
+        if (parent && parent.branchToNext == "left") {
+            return parent.ap.b;
+        }
     }
 
     left() {
@@ -114,15 +134,15 @@ export class DepthFirst extends Traverser {
                         this.up();
                         this.right();
                     } else {
-                        return false;
+                        return true;
                     }
                 }
             } else {
-                return false;
+                return true;
             }
         }
 
-        return true;
+        return false;
     }
 }
 
