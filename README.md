@@ -9,7 +9,7 @@ Uses the parsimmon parser combinator library.
 
 # Story
 The [lambda calculus](https://www.inf.fu-berlin.de/lehre/WS03/alpi/lambda.pdf)
-is a foundational language for computation. Its only values are functions
+is a foundational programming language. Its only values are functions
 and the only thing that can take place is function application. Other types of
 values can be represented and manipulated adhoc, for instance the natural
 numbers can be defined as a successor function and a zero function. Even
