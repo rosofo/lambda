@@ -1,10 +1,6 @@
 # Lambda Calculus in Typescript
 A lambda calculus interpreter written in typescript with a basic web interface.
 
-Note that it unfortunately does _not_ handle capture-avoiding renaming because
-it's a notoriously tricky thing to deal with and I'd rather be eating pizza or something.
-In practice that means some expressions won't evaluate correctly, but most seem to.
-
 Uses the parsimmon parser combinator library.
 
 # Story
