@@ -26,6 +26,7 @@ tedium.
 
 Some scattered thoughts:
 
+- Ironically I wrote this in a mostly non-functional way. I'm still learning js/ts so I didn't want to use a functional library yet.
 - Writing the parser quickly became a priority as I realised it's also a development
 tool. Writing object literals for tests was cumbersome.
 - The contrast between the way the parser combinator library allowed me to manage
