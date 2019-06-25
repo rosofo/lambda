@@ -2,13 +2,17 @@ import * as L from './lambda';
 import * as d3 from 'd3';
 
 let body = d3.select("body");
+
 let div = body.append("div")
+div.append("div")
+    .style("font-size", "140px")
+    .html("&lambda;")
 div.style("text-align", "center")
     .style("position", "relative")
-    .style("top", "50%")
-    .style("transform", "translateY(50%)")
-    .style("-webkit-transform", "translateY(50%)")
-    .style("-ms-transform", "translateY(50%)")
+    .style("top", "40%")
+    .style("transform", "translateY(40%)")
+    .style("-webkit-transform", "translateY(40%)")
+    .style("-ms-transform", "translateY(40%)")
     .append("input")
       .attr("type", "text")
       .attr("id", "expression")
