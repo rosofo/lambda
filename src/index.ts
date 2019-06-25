@@ -37,7 +37,7 @@ function showEvaluated(expr: string, element: string) {
             results.push(L.print(expr));
         }
     } catch(error) {}
-    output.data(results).join("div").text(d => d as string);
+    output.data(results).join("div").text((d, i) => `${i}: ${d as string}`);
 }
 
 function checkSyntax() {
