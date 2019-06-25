@@ -19,6 +19,7 @@
     "@types/jest": "^24.0.15",
     "@types/parsimmon": "^1.10.0",
     "@types/pegjs": "^0.10.1",
+    "cssnano": "^4.1.10",
     "jest": "^24.8.0",
     "ts-jest": "^24.0.2",
     "typescript": "^3.5.2"
