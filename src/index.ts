@@ -15,6 +15,7 @@ div.style("text-align", "center")
     .style("-ms-transform", "translateY(40%)")
     .append("input")
       .attr("type", "text")
+      .attr("spellcheck", "false")
       .attr("id", "expression")
       .on("input", checkSyntax)
 
