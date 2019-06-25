@@ -1,4 +1,7 @@
 # Lambda Calculus in Typescript
+
+[live](https://notinventedthere.github.io/lambda/)
+
 A lambda calculus interpreter written in typescript with a basic web interface.
 
 Uses the parsimmon parser combinator library.
