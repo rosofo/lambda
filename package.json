@@ -6,7 +6,7 @@
   "scripts": {
       "test": "jest",
       "testWithCoverage": "jest --coverage",
-      "build": "parcel build src/index.html --outer-dir docs --public-url ./"
+      "build": "parcel build src/index.html --out-dir docs --public-url ./"
   },
   "author": "",
   "license": "ISC",

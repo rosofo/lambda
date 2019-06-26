@@ -14,6 +14,7 @@ main.style("text-align", "center")
     .style("-webkit-transform", "translateY(40%)")
     .style("-ms-transform", "translateY(40%)")
     .append("input")
+      .style("width", "40%")
       .attr("type", "text")
       .attr("spellcheck", "false")
       .attr("id", "expression")
@@ -32,7 +33,7 @@ let result = main.append("div")
     .style("height", "400px")
     .style("overflow", "auto")
     .on("scroll", () => {
-        if (Math.round(result.property("scrollTop")) % 300 == 0) resultGenerator.next(20);
+        if (result.property("scrollTop") % 400 > 100) resultGenerator.next(20);
     });
 
 // help + examples
@@ -43,7 +44,9 @@ let examples = [
     {name: "Number one defined as successor applied to zero",
      expr: "(\\wyx.y(wyx))\\sz.z"},
     {name: "Add two and two",
-     expr: "(\\ab.(a (\\wyx.y(wyx))) b) (\\sz.ssz) (\\sz.ssz)"}
+     expr: "(\\ab.(a (\\wyx.y(wyx))) b) (\\sz.s(sz)) (\\sz.s(sz))"},
+    {name: "Ω (Omega) - diverges!",
+     expr: "(\\x.xx)(\\x.xx)"}
 ]
 
 d3.select(".help").select("#examples")
