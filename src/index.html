@@ -1,17 +1,40 @@
 <!DOCTYPE html>
 <head>
     <style>
+     h1 { font-family: Cambria, Georgia, serif; font-size: 18px; font-style: normal; font-variant: normal; font-weight: 700; line-height: 19.8px; } h3 { font-family: Cambria, Georgia, serif; font-size: 14px; font-style: normal; font-variant: normal; font-weight: 700; line-height: 15.4px; } p { font-family: Cambria, Georgia, serif; font-size: 14px; font-style: normal; font-variant: normal; font-weight: 400; line-height: 20px; } blockquote { font-family: Cambria, Georgia, serif; font-size: 21px; font-style: normal; font-variant: normal; font-weight: 400; line-height: 30px; } pre { font-family: Cambria, Georgia, serif; font-size: 13px; font-style: normal; font-variant: normal; font-weight: 400; line-height: 18.5667px; }
+
      div {
-         font-family: "Cambria";
          padding: 5px;
      }
 
-     input {
-         font-family: "Cambria";
-         font-size: 18px;
+     .help {
+         z-index: 1;
+         position: fixed;
+         bottom: 0%;
+         right: 0%;
+         background-color: #d1feff;
      }
+
+     p {
+         line-height: 14px;
+     }
+
+     a { -webkit-transition: color .4s; transition: color .4s; color: #265C83; }
+
+     a:link, a:visited { color: #265C83; }
+
+     a:hover { color: #7FDBFF; }
+
+     a:active { -webkit-transition: color .3s; transition: color .3s; color: #007BE6; }
+
+     .link { text-decoration: none; }
     </style>
 </head>
 <body>
+    <div class="help">
+        <div id="examples">
+            <h3>Examples</h3>
+        </div>
+    </div>
     <script src="./index.ts"></script>
 </body>
