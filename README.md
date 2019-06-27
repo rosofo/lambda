@@ -6,6 +6,8 @@ A lambda calculus interpreter written in typescript with a basic web interface.
 
 Uses the parsimmon parser combinator library.
 
+**I have not verified its correctness beyond a few unit tests, use at your own risk**
+
 # Story
 The [lambda calculus](https://www.inf.fu-berlin.de/lehre/WS03/alpi/lambda.pdf)
 is a foundational programming language. Its only values are functions
