@@ -46,20 +46,7 @@ export function* evaluateGen(expr: expression): IterableIterator<expression> {
                 let result = bind(t.current, t.rightSibling);
                 t.up();
                 t.current = result;
-                let top;
-                let topContext = t.contexts[0];
-                if (topContext) {
-                    if (topContext.stack[0]) {
-                        top = topContext.stack[0].ap;
-                    } else {
-                        top = topContext.current;
-                    }
-                } else if (t.stack[0]){
-                    top = t.stack[0].ap;
-                } else {
-                    top = t.current;
-                }
-                yield top;
+                yield t.expression;
             } else {
                 t.enterScope();
             }
@@ -93,17 +80,12 @@ export class Traverser {
     set current(expr: expression) {
         this._current = expr;
 
-        let above;
-        if (this.stack[0]) above = last(this.stack);
-        else {
-            for (let i = this.contexts.length - 1; i > 0; i--) {
-                above = last(this.contexts[i].stack);
-                if (above) break;
-            }
-        }
-        if (above) {
+        if (this.stack[0]) {
+            let above: node = last(this.stack);
             if (above.branchToNext == "left") above.ap.a = expr;
             else above.ap.b = expr;
+        } else if (this.contexts[0]) {
+            last(this.contexts).current.body = expr;
         }
     }
 
@@ -116,6 +98,23 @@ export class Traverser {
         if (parent && parent.branchToNext == "left") {
             return parent.ap.b;
         }
+    }
+
+    get expression(): expression {
+        let top;
+        let topContext = this.contexts[0];
+        if (topContext) {
+            if (topContext.stack[0]) {
+                top = topContext.stack[0].ap;
+            } else {
+                top = topContext.current;
+            }
+        } else if (this.stack[0]){
+            top = this.stack[0].ap;
+        } else {
+            top = this.current;
+        }
+        return top;
     }
 
 

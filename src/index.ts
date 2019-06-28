@@ -45,6 +45,8 @@ let examples = [
      expr: "(\\wyx.y(wyx))\\sz.z"},
     {name: "Add two and two",
      expr: "(\\ab.(a (\\wyx.y(wyx))) b) (\\sz.s(sz)) (\\sz.s(sz))"},
+    {name: "Multiply three by four",
+     expr: "(\\nmh.n(mh))(\\fx.f(f(fx)))(\\gy.g(g(g(gy))))"},
     {name: "Ω (Omega) - diverges!",
      expr: "(\\x.xx)(\\x.xx)"}
 ]

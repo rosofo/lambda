@@ -16,6 +16,11 @@ describe('evaluate', function() {
     it("maintains alpha-equivalence", function() {
         expect(interpret("(\\x.\\y.x)y")).not.toBe("\\y.y");
     })
+
+    it("multiplies this properly: ", function() {
+        expect(interpret("(\\nmh.n(mh))(\\fx.f(f(fx)))(\\gy.g(g(g(gy))))"))
+            .toBe("\\h.\\x.h(h(h(h(h(h(h(h(h(h(h(hx)))))))))))")
+    })
 })
 
 describe('DepthFirst', function() {
