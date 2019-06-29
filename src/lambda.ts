@@ -5,21 +5,29 @@ export const succ = "(\\wyx.y(wyx))";
 export const zero = "(\\sz.z)";
 export const add = (a: string, b: string) => a + "(\\mnfx.mf(nfx))" + b;
 
-export type lambda = {
-    kind: "l",
-    head: name,
-    body: expression
+export class Lambda {
+    head: variable;
+    body: expression;
+    constructor(head: variable, body: expression) {
+        this.head = head;
+        this.body = body;
+    }
 };
 
 export type name = string;
+export type index = number;
+export type variable = name | index;
 
-export type application = {
-    kind: "ap",
-    a: expression,
-    b: expression
+export class Application {
+    a: expression;
+    b: expression;
+    constructor(a: expression, b: expression) {
+        this.a = a;
+        this.b = b;
+    }
 };
 
-export type expression = lambda | name | application;
+export type expression = Lambda | name | Application;
 
 export const interpret = (s: string) => evaluate(parse(s));
 
@@ -41,7 +49,7 @@ export function* evaluateGen(expr: expression): IterableIterator<expression> {
     let done = false;
 
     while (!done) {
-        if (isLambda(t.current)) {
+        if (t.current instanceof Lambda) {
             if (t.rightSibling) {
                 let result = bind(t.current, t.rightSibling);
                 t.up();
@@ -64,7 +72,7 @@ export function* evaluateGen(expr: expression): IterableIterator<expression> {
 
 // traversal
 
-type node = {ap: application, branchToNext: "left" | "right"};
+type node = {ap: Application, branchToNext: "left" | "right"};
 
 export class Traverser {
     _current: expression;
@@ -119,7 +127,7 @@ export class Traverser {
 
 
     left() {
-        if (isApplication(this.current)) {
+        if (this.current instanceof Application) {
             this.stack.push({ap: this.current, branchToNext: "left"});
             this.current = this.current.a;
             return true;
@@ -127,7 +135,7 @@ export class Traverser {
     }
 
     right() {
-        if (isApplication(this.current)) {
+        if (this.current instanceof Application) {
             this.stack.push({ap: this.current, branchToNext: "right"});
             this.current = this.current.b;
             return true;
@@ -143,7 +151,7 @@ export class Traverser {
     }
 
     enterScope() {
-        if (isLambda(this.current)) {
+        if (this.current instanceof Lambda) {
             this.contexts.push({current: this.current, stack: this.stack});
             this._current = this.current.body;
             this.stack = [];
@@ -152,7 +160,7 @@ export class Traverser {
 
     exitScope() {
         let outer = this.contexts.pop();
-        if (outer && isLambda(outer.current) && !this.stack.length) {
+        if (outer && outer.current instanceof Lambda && !this.stack.length) {
             this.current = outer.current;
             this.stack = outer.stack;
         }
@@ -161,7 +169,7 @@ export class Traverser {
 
 export class DepthFirst extends Traverser {
     forward() {
-        if (isApplication(this.current)) this.left();
+        if (this.current instanceof Application) this.left();
         else {
             let above = last(this.stack);
             if (above) {
@@ -189,56 +197,40 @@ export class DepthFirst extends Traverser {
     }
 }
 
-function newLambda(head: name, body: expression): lambda {
-    return {kind: 'l', head, body};
-}
-
-function newApplication(a: expression, b: expression): application {
-    return {kind: 'ap', a, b};
-}
-
-export function isApplication(expr: expression): expr is application {
-    return !(typeof expr == "string" || expr.kind == "l");
-}
-
-export function isLambda(expr: expression): expr is lambda {
-    return !(typeof expr == "string" || expr.kind == "ap");
-}
-
-export function bind(lambda: lambda, expr: expression): expression {
+export function bind(lambda: Lambda, expr: expression): expression {
     function replaceInExpression(current: expression): expression {
-        if (typeof current == "string") {
-            return current == lambda.head ? expr : current;
-        } else if (isApplication(current)) {
-            return newApplication(
-                replaceInExpression(current.a),
-                replaceInExpression(current.b)
-            );
-        } else {
+        if (current instanceof Lambda) {
             if (current.head == lambda.head) {
                 return current;
             } else {
-                return newLambda(
+                return new Lambda(
                     current.head,
                     replaceInExpression(current.body)
                 );
             }
+        } else if (current instanceof Application) {
+            return new Application(
+                replaceInExpression(current.a),
+                replaceInExpression(current.b)
+            );
+        } else {
+            return current == lambda.head ? expr : current;
         }
     }
-
-    return replaceInExpression(lambda.body);
+        return replaceInExpression(lambda.body);
 }
 
 // printing
 
 export function print(expr: expression): string {
-    if (typeof expr == "string") return expr;
-    else if (isLambda(expr)) return `\\${expr.head}.${print(expr.body)}`;
-    else {
+    if (expr instanceof Lambda) return `\\${expr.head}.${print(expr.body)}`;
+    else if (expr instanceof Application) {
         let a = print(expr.a), b = print(expr.b);
-        if (typeof expr.a != "string") a = `(${a})`;
-        if (typeof expr.b != "string") b = `(${b})`;
+        if (typeof expr.a != "string" && typeof expr.a != "number") a = `(${a})`;
+        if (typeof expr.b != "string" && typeof expr.b != "number") b = `(${b})`;
         return a + b;
+    } else {
+        return String(expr);
     }
 }
 
@@ -250,7 +242,7 @@ export function parse(string: string): expression {
 
 const Lang = P.createLanguage<{
     Term: expression,
-    Lambda: lambda,
+    Lambda: Lambda,
     Application: expression,
     Name: name,
     Atom: expression
@@ -261,15 +253,15 @@ const Lang = P.createLanguage<{
             .map(result => {
                 let names = result[1]
                 return names.reduceRight((acc, name) => {
-                    return {kind: 'l', head: name, body: acc};
-                }, result[3]) as lambda;
+                    return new Lambda(name, acc);
+                }, result[3]) as Lambda;
             })
     },
     Application: r => {
         return r.Atom.atLeast(1)
             .map(atoms => {
                 return atoms.reduce((acc, atom) => {
-                    return {kind: 'ap', a: acc, b: atom};
+                    return new Application(acc, atom);
                 });
             })
     },

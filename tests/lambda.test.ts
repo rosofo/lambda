@@ -4,7 +4,7 @@ const interpret = (s: string) => L.print(L.evaluate(L.parse(s)));
 
 describe('evaluate', function() {
     it("beta reduces `(\\x.x)y` to `y`", function() {
-        let result = L.evaluate({kind: 'ap', a: {kind: 'l', head: 'x', body: 'x'}, b: 'y'});
+        let result = L.evaluate(new L.Application(new L.Lambda('x', 'x'), 'y'));
         expect(result).toBe('y');
     });
 
@@ -28,7 +28,7 @@ describe('DepthFirst', function() {
 
     it("acts as identity when forward is iterated until it returns false", function() {
         let input1 = L.succ + L.zero;
-        let parsed = L.parse(input1) as L.application;
+        let parsed = L.parse(input1) as L.Application;
         t = new L.DepthFirst(parsed);
         let done = true;
         while (!done) {
@@ -43,11 +43,11 @@ describe('DepthFirst', function() {
            let input2 = "(\\a.a\\z.z)b(\\c.cy)de"
            let parsed = L.parse(input2);
            t = new L.DepthFirst(parsed);
-           let visited: string[] = [];
+           let visited: L.variable[] = [];
            let done = false;
 
            while (!done) {
-               if (L.isLambda(t.current)) {
+               if (t.current instanceof L.Lambda) {
                    visited.push(t.current.head);
                } else if (typeof t.current == "string") {
                    visited.push(t.current);
@@ -63,14 +63,14 @@ describe('DepthFirst', function() {
 describe('Traverser', function() {
     it("mutates overall expression when current is set", function() {
         let input = L.succ + L.zero;
-        let parsed = L.parse(input) as L.application;
+        let parsed = L.parse(input) as L.Application;
         let t = new L.Traverser(parsed);
         t.left();
-        let bound = L.bind(t.current as L.lambda, t.rightSibling as L.expression);
+        let bound = L.bind(t.current as L.Lambda, t.rightSibling as L.expression);
         t.current = bound;
 
         t.up();
-        let result = t.current as L.application;
+        let result = t.current as L.Application;
         expect(result.a).toMatchObject(bound);
         expect(parsed.a).toMatchObject(bound);
     });
@@ -78,39 +78,19 @@ describe('Traverser', function() {
 
 describe('bind', function() {
     it("uses lexical scoping", function() {
-        // this is equivalent to `\x.x(\x.x)x`
-        let input = {kind: 'l' as 'l',
-                     head: 'x',
-                     body: {kind: 'ap',
-                            a: {kind: 'ap',
-                                a: 'x',
-                                b: {kind: 'l',
-                                    head: 'x',
-                                    body: 'x'}},
-                            b: 'x'}};
+        let input = L.parse("\\x.((x(\\x.x))x)");
 
-        let result = L.bind(input as L.lambda, 'y');
-        let expected = {kind: 'ap',
-                        a: {kind: 'ap',
-                            a: 'y',
-                            b: {kind: 'l',
-                                head: 'x',
-                                body: 'x'}},
-                        b: 'y'};
-        expect(result).toMatchObject(expected);
+        let result = L.print(L.bind(input as L.Lambda, 'y'));
+        let expected = "(y(\\x.x))y"
+        expect(result).toBe(expected);
     });
 });
 
 describe('parse', function() {
     it("uncurries `\\xy.xy` to `\\x.(\\y.xy)`", function() {
         let result = L.parse('\\xy.xy');
-        let expected = {kind: 'l',
-                        head: 'x',
-                        body: {kind: 'l',
-                               head: 'y',
-                               body: {kind: 'ap',
-                                      a: 'x',
-                                      b: 'y'}}};
+        let expected =
+            new L.Lambda('x', new L.Lambda('y', new L.Application('x', 'y')));
         expect(result).toMatchObject(expected);
     });
 
