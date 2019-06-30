@@ -2,6 +2,9 @@ import * as L from '../src/lambda';
 
 const interpret = (s: string) => L.print(L.evaluate(L.parse(s)));
 
+const ap = (a: L.expression, b: L.expression) => new L.Application(a, b);
+const l = (head: L.variable, body: L.expression) => new L.Lambda(head, body);
+
 describe('evaluate', function() {
     it("beta reduces `(\\x.x)y` to `y`", function() {
         let result = L.evaluate(new L.Application(new L.Lambda('x', 'x'), 'y'));
@@ -90,7 +93,7 @@ describe('parse', function() {
     it("uncurries `\\xy.xy` to `\\x.(\\y.xy)`", function() {
         let result = L.parse('\\xy.xy');
         let expected =
-            new L.Lambda('x', new L.Lambda('y', new L.Application('x', 'y')));
+            l('x', l('y', ap('x', 'y')));
         expect(result).toMatchObject(expected);
     });
 
@@ -98,3 +101,27 @@ describe('parse', function() {
         expect(L.print(L.parse("\\x.xz\\y.xy"))).toBe("\\x.(xz)(\\y.xy)");
     })
 });
+
+describe('convertToIndices', function() {
+    it("gives free variables indices according to alphabet", function() {
+        expect(L.convertToIndices(L.parse('abc')))
+            .toMatchObject(new L.Application(new L.Application(0, 1), 2));
+    })
+
+    it("adds the number of bindings to the index of free variables", function() {
+        expect(L.convertToIndices(L.parse('\\x.a')))
+            .toMatchObject(new L.Lambda('x', 1));
+    })
+
+    it("converts `(\\x.ax)b` to `(\\10)1`", function() {
+        expect(L.convertToIndices(L.parse('(\\x.ax)b')))
+            .toMatchObject(ap(new L.Lambda('x', new L.Application(1, 0)), 1))
+    })
+
+    // it("converts `(\\xy.zx(\\u.ux))(\\x.wx)` to `(\\ \\ 4 2 (\\ 1 3)) (\\ 5 1)`",
+    //    function() {
+    //        let result = ap(l('x', l('y', ap(ap(4, 2), l('u', ap(1, 3))))), l('x', ap(5, 1)))
+    //        expect(L.convertToIndices(L.parse("(\\x. \\y. z x (\\u. u x)) (\\x. w x)")))
+    //            .toMatchObject(result);
+    //    })
+})

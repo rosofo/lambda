@@ -27,7 +27,7 @@ export class Application {
     }
 };
 
-export type expression = Lambda | name | Application;
+export type expression = Lambda | variable | Application;
 
 export const interpret = (s: string) => evaluate(parse(s));
 
@@ -60,11 +60,6 @@ export function* evaluateGen(expr: expression): IterableIterator<expression> {
             }
         } else {
             done = t.forward();
-            if (done && t.contexts.length) {
-                while (!t.stack.length && t.contexts.length) t.exitScope();
-                if (!t.contexts.length) break;
-                done = false;
-            }
         }
     }
 }
@@ -168,28 +163,34 @@ export class Traverser {
 }
 
 export class DepthFirst extends Traverser {
+    onExitScope: (() => any) | undefined;
+
+    exitScopes() {
+        while (!this.stack[0] && this.contexts[0]) {
+            if (this.onExitScope) this.onExitScope();
+            this.exitScope();
+        }
+
+        return !this.stack[0] && !this.contexts[0];
+    }
+
     forward() {
         if (this.current instanceof Application) this.left();
         else {
             let above = last(this.stack);
             if (above) {
-                if (above.branchToNext == "left") {
+                while (above && above.branchToNext == "right") {
+                    this.up();
+                    above = last(this.stack);
+                }
+                if (above) {
                     this.up();
                     this.right();
                 } else {
-                    while (above && above.branchToNext == "right") {
-                        this.up();
-                        above = last(this.stack);
-                    }
-                    if (above) {
-                        this.up();
-                        this.right();
-                    } else {
-                        return true;
-                    }
+                    return this.exitScopes();
                 }
             } else {
-                return true;
+                return this.exitScopes();
             }
         }
 
@@ -218,6 +219,43 @@ export function bind(lambda: Lambda, expr: expression): expression {
         }
     }
         return replaceInExpression(lambda.body);
+}
+
+// indices
+
+export function convertToIndices(expr: expression): expression {
+    let t = new DepthFirst(expr);
+    let varStack: variable[] = [];
+    let justExited = false;
+    t.onExitScope = () => {
+        varStack.pop();
+        justExited = true;
+    }
+
+    const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
+
+    let done = false;
+    while (!done) {
+        if (t.current instanceof Lambda) {
+            if (justExited) {
+                done = t.forward();
+                justExited = false;
+            } else {
+                varStack.push(t.current.head)
+                t.enterScope();
+            }
+        } else {
+            if (typeof t.current == "string") {
+                let index = varStack.indexOf(t.current);
+                if (index >= 0) t.current = varStack.length - 1 - index;
+                else t.current = ALPHABET.indexOf(t.current) + varStack.length;
+            }
+
+            done = t.forward();
+        }
+    }
+
+    return t.current;
 }
 
 // printing
