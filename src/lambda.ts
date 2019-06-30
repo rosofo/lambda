@@ -163,12 +163,12 @@ export class Traverser {
 }
 
 export class DepthFirst extends Traverser {
-    onExitScope: (() => any) | undefined;
+    afterExitScope: (() => any) | undefined;
 
     exitScopes() {
         while (!this.stack[0] && this.contexts[0]) {
-            if (this.onExitScope) this.onExitScope();
             this.exitScope();
+            if (this.afterExitScope) this.afterExitScope();
         }
 
         return !this.stack[0] && !this.contexts[0];
@@ -178,17 +178,13 @@ export class DepthFirst extends Traverser {
         if (this.current instanceof Application) this.left();
         else {
             let above = last(this.stack);
+            while (above && above.branchToNext == "right") {
+                this.up();
+                above = last(this.stack);
+            }
             if (above) {
-                while (above && above.branchToNext == "right") {
-                    this.up();
-                    above = last(this.stack);
-                }
-                if (above) {
-                    this.up();
-                    this.right();
-                } else {
-                    return this.exitScopes();
-                }
+                this.up();
+                this.right();
             } else {
                 return this.exitScopes();
             }
@@ -226,10 +222,9 @@ export function bind(lambda: Lambda, expr: expression): expression {
 export function convertToIndices(expr: expression): expression {
     let t = new DepthFirst(expr);
     let varStack: variable[] = [];
-    let justExited = false;
-    t.onExitScope = () => {
+    t.afterExitScope = () => {
         varStack.pop();
-        justExited = true;
+        if (t.stack[0]) done = t.forward();
     }
 
     const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
@@ -237,13 +232,8 @@ export function convertToIndices(expr: expression): expression {
     let done = false;
     while (!done) {
         if (t.current instanceof Lambda) {
-            if (justExited) {
-                done = t.forward();
-                justExited = false;
-            } else {
-                varStack.push(t.current.head)
-                t.enterScope();
-            }
+            varStack.push(t.current.head)
+            t.enterScope();
         } else {
             if (typeof t.current == "string") {
                 let index = varStack.indexOf(t.current);

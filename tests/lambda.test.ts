@@ -118,10 +118,10 @@ describe('convertToIndices', function() {
             .toMatchObject(ap(new L.Lambda('x', new L.Application(1, 0)), 1))
     })
 
-    // it("converts `(\\xy.zx(\\u.ux))(\\x.wx)` to `(\\ \\ 4 2 (\\ 1 3)) (\\ 5 1)`",
-    //    function() {
-    //        let result = ap(l('x', l('y', ap(ap(4, 2), l('u', ap(1, 3))))), l('x', ap(5, 1)))
-    //        expect(L.convertToIndices(L.parse("(\\x. \\y. z x (\\u. u x)) (\\x. w x)")))
-    //            .toMatchObject(result);
-    //    })
+    it("converts `(\\xy.zx(\\u.ux))(\\x.wx)` to `(\\ \\ 27 1 (\\ 0 2)) (\\ 23 0)`",
+       function() {
+           let result = ap(l('x', l('y', ap(ap(27, 1), l('u', ap(0, 2))))), l('x', ap(23, 0)))
+           expect(L.convertToIndices(L.parse("(\\x. \\y. z x (\\u. u x)) (\\x. w x)")))
+               .toMatchObject(result);
+       })
 })
