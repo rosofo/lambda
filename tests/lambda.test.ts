@@ -2,8 +2,8 @@ import * as L from '../src/lambda';
 
 const interpret = (s: string) => L.print(L.evaluate(L.parse(s)));
 
-const ap = (a: L.expression, b: L.expression) => new L.Application(a, b);
-const l = (head: L.variable, body: L.expression) => new L.Lambda(head, body);
+const ap = <T extends {}>(a: L.expression<T>, b: L.expression<T>) => new L.Application<T>(a, b);
+const l = <T extends {}>(head: L.name, body: L.expression<T>) => new L.Lambda<T>(head, body);
 
 describe('evaluate', function() {
     it("beta reduces `(\\x.x)y` to `y`", function() {
@@ -46,7 +46,7 @@ describe('DepthFirst', function() {
            let input2 = "(\\a.a\\z.z)b(\\c.cy)de"
            let parsed = L.parse(input2);
            t = new L.DepthFirst(parsed);
-           let visited: L.variable[] = [];
+           let visited: L.name[] = [];
            let done = false;
 
            while (!done) {
@@ -124,4 +124,11 @@ describe('convertToIndices', function() {
            expect(L.convertToIndices(L.parse("(\\x. \\y. z x (\\u. u x)) (\\x. w x)")))
                .toMatchObject(result);
        })
+})
+
+describe('convertToNames', function() {
+    let input1 = ap(l('x', l('y', ap(ap('x', 'y'), 'z'))), 'a')
+    it("forms identity when composed with convertToIndices", function() {
+        expect(L.convertToNames(L.convertToIndices(input1))).toMatchObject(input1)
+    })
 })

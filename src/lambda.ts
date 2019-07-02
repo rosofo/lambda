@@ -5,10 +5,10 @@ export const succ = "(\\wyx.y(wyx))";
 export const zero = "(\\sz.z)";
 export const add = (a: string, b: string) => a + "(\\mnfx.mf(nfx))" + b;
 
-export class Lambda {
-    head: variable;
-    body: expression;
-    constructor(head: variable, body: expression) {
+export class Lambda<T = name> {
+    head: name;
+    body: expression<T>;
+    constructor(head: name, body: expression<T>) {
         this.head = head;
         this.body = body;
     }
@@ -16,18 +16,17 @@ export class Lambda {
 
 export type name = string;
 export type index = number;
-export type variable = name | index;
 
-export class Application {
-    a: expression;
-    b: expression;
-    constructor(a: expression, b: expression) {
+export class Application<T = name> {
+    a: expression<T>;
+    b: expression<T>;
+    constructor(a: expression<T>, b: expression<T>) {
         this.a = a;
         this.b = b;
     }
 };
 
-export type expression = Lambda | variable | Application;
+export type expression<T = name> = Lambda<T> | T | Application<T>;
 
 export const interpret = (s: string) => evaluate(parse(s));
 
@@ -67,24 +66,24 @@ export function* evaluateGen(expr: expression): IterableIterator<expression> {
 
 // traversal
 
-type node = {ap: Application, branchToNext: "left" | "right"};
+type node<T> = {ap: Application<T>, branchToNext: "left" | "right"};
 
-export class Traverser {
-    _current: expression;
-    stack: node[];
-    contexts: {current: expression, stack: node[]}[] = [];
+export class Traverser<T> {
+    _current: expression<T>;
+    stack: node<T>[];
+    contexts: {current: expression<T>, stack: node<T>[]}[] = [];
 
-    constructor(expr: expression) {
+    constructor(expr: expression<T>) {
         this._current = expr;
         this.stack = [];
         this.contexts = [];
     }
 
-    set current(expr: expression) {
+    set current(expr: expression<T>) {
         this._current = expr;
 
         if (this.stack[0]) {
-            let above: node = last(this.stack);
+            let above: node<T> = last(this.stack);
             if (above.branchToNext == "left") above.ap.a = expr;
             else above.ap.b = expr;
         } else if (this.contexts[0]) {
@@ -96,14 +95,14 @@ export class Traverser {
         return this._current;
     }
 
-    get rightSibling(): expression | undefined {
+    get rightSibling(): expression<T> | undefined {
         let parent = last(this.stack);
         if (parent && parent.branchToNext == "left") {
             return parent.ap.b;
         }
     }
 
-    get expression(): expression {
+    get expression(): expression<T> {
         let top;
         let topContext = this.contexts[0];
         if (topContext) {
@@ -162,7 +161,7 @@ export class Traverser {
     }
 }
 
-export class DepthFirst extends Traverser {
+export class DepthFirst<T> extends Traverser<T> {
     afterExitScope: (() => any) | undefined;
 
     exitScopes() {
@@ -219,33 +218,47 @@ export function bind(lambda: Lambda, expr: expression): expression {
 
 // indices
 
-export function convertToIndices(expr: expression): expression {
-    let t = new DepthFirst(expr);
-    let varStack: variable[] = [];
+export function convertToIndices(expr: expression<name>): expression<index> {
+    return mapExpr(expr, (current, bindings) => {
+        let index = bindings.indexOf(current);
+        if (index >= 0) return bindings.length - 1 - index;
+        else return ALPHABET.indexOf(current) + bindings.length;
+    })
+}
+
+const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
+
+export function convertToNames(expr: expression<index>): expression<name> {
+    return mapExpr(expr, (current, bindings) => {
+        let index = -(current + 1);
+        if (bindings[index]) return bindings[index];
+        else return ALPHABET[current - bindings.length];
+    })
+}
+
+function mapExpr<A, B>(expr: expression<A>, f: (c: A, bs: name[]) => B): expression<B> {
+    let exprToModify: expression<A | B> = expr;
+    let t = new DepthFirst(exprToModify);
+    let bindings: name[] = [];
     t.afterExitScope = () => {
-        varStack.pop();
+        bindings.pop();
         if (t.stack[0]) done = t.forward();
     }
-
-    const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 
     let done = false;
     while (!done) {
         if (t.current instanceof Lambda) {
-            varStack.push(t.current.head)
+            bindings.push(t.current.head)
             t.enterScope();
         } else {
-            if (typeof t.current == "string") {
-                let index = varStack.indexOf(t.current);
-                if (index >= 0) t.current = varStack.length - 1 - index;
-                else t.current = ALPHABET.indexOf(t.current) + varStack.length;
-            }
+            if (t.current instanceof Application) {}
+            else t.current = f(t.current as A, bindings);
 
             done = t.forward();
         }
     }
 
-    return t.current;
+    return t.current as expression<B>;
 }
 
 // printing
