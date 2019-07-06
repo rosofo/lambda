@@ -70,11 +70,12 @@ function setAndEvaluate(newExpr: string) {
 
 
 class ResultGenerator {
-    gen: IterableIterator<L.expression>;
+    gen: IterableIterator<L.expression<L.index>>;
     resultElement: any;
     results: string[];
     constructor(expr: string, element: string) {
-        this.gen = L.evaluateGen(L.parse(expr));
+        let c = L.convertToIndices(L.parse(expr));
+        this.gen = L.evaluateGen(c);
         this.results = [];
         this.resultElement = d3.select(element).selectAll("div")
     }
@@ -82,7 +83,7 @@ class ResultGenerator {
     next(n: number = 1) {
         for (let i = 0; i < n; i++) {
             let next = this.gen.next();
-            if (next.value) this.results.push(L.print(next.value));
+            if (next.value) this.results.push(L.print(L.convertToNames(next.value)));
         }
 
         this.resultElement

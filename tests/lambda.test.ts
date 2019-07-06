@@ -1,29 +1,13 @@
 import * as L from '../src/lambda';
 
-const interpret = (s: string) => L.print(L.evaluate(L.parse(s)));
-
 const ap = <T extends {}>(a: L.expression<T>, b: L.expression<T>) => new L.Application<T>(a, b);
 const l = <T extends {}>(head: L.name, body: L.expression<T>) => new L.Lambda<T>(head, body);
 
 describe('evaluate', function() {
-    it("beta reduces `(\\x.x)y` to `y`", function() {
-        let result = L.evaluate(new L.Application(new L.Lambda('x', 'x'), 'y'));
-        expect(result).toBe('y');
+    it("beta reduces `(\\0)0` to `0`", function() {
+        let result = L.evaluate(ap(l('x', 0), 0));
+        expect(result).toBe(0);
     });
-
-    it("applies succ to zero to get one", function() {
-        expect(interpret(L.succ + L.zero))
-            .toBe("\\y.\\x.yx");
-    })
-
-    it("maintains alpha-equivalence", function() {
-        expect(interpret("(\\x.\\y.x)y")).not.toBe("\\y.y");
-    })
-
-    it("multiplies this properly: ", function() {
-        expect(interpret("(\\nmh.n(mh))(\\fx.f(f(fx)))(\\gy.g(g(g(gy))))"))
-            .toBe("\\h.\\x.h(h(h(h(h(h(h(h(h(h(h(hx)))))))))))")
-    })
 })
 
 describe('DepthFirst', function() {
@@ -68,24 +52,24 @@ describe('Traverser', function() {
         let input = L.succ + L.zero;
         let parsed = L.parse(input) as L.Application;
         let t = new L.Traverser(parsed);
-        t.left();
-        let bound = L.bind(t.current as L.Lambda, t.rightSibling as L.expression);
-        t.current = bound;
-
+        t.right();
+        t.current = 'x';
         t.up();
-        let result = t.current as L.Application;
-        expect(result.a).toMatchObject(bound);
-        expect(parsed.a).toMatchObject(bound);
+
+        expect(parsed.b).toBe('x')
     });
 });
 
 describe('bind', function() {
-    it("uses lexical scoping", function() {
-        let input = L.parse("\\x.((x(\\x.x))x)");
+    it("returns right argument when left is identity", function() {
+        expect(L.bind(l('x', 0), 1)).toBe(1);
+        expect(L.bind(l('x', 0), ap(l('n', 20), 14)))
+            .toMatchObject(ap(l('n', 20), 14));
+    });
 
-        let result = L.print(L.bind(input as L.Lambda, 'y'));
-        let expected = "(y(\\x.x))y"
-        expect(result).toBe(expected);
+    it("uses lexical scoping", function() {
+        expect(L.bind(l('x', ap(ap(0, l('x', 0)), 0)), 1))
+            .toMatchObject(ap(ap(1, l('x', 0)), 1));
     });
 });
 
@@ -127,8 +111,9 @@ describe('convertToIndices', function() {
 })
 
 describe('convertToNames', function() {
-    let input1 = ap(l('x', l('y', ap(ap('x', 'y'), 'z'))), 'a')
     it("forms identity when composed with convertToIndices", function() {
-        expect(L.convertToNames(L.convertToIndices(input1))).toMatchObject(input1)
+        let input1 = ap(l('x', l('y', ap(ap('x', 'y'), 'z'))), 'a')
+        let input2 = ap(l('x', l('y', ap(ap('x', 'y'), 'z'))), 'a')
+        expect(L.convertToNames(L.convertToIndices(input1))).toMatchObject(input2)
     })
 })

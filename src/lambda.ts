@@ -5,6 +5,8 @@ export const succ = "(\\wyx.y(wyx))";
 export const zero = "(\\sz.z)";
 export const add = (a: string, b: string) => a + "(\\mnfx.mf(nfx))" + b;
 
+// types
+
 export class Lambda<T = name> {
     head: name;
     body: expression<T>;
@@ -28,9 +30,11 @@ export class Application<T = name> {
 
 export type expression<T = name> = Lambda<T> | T | Application<T>;
 
-export const interpret = (s: string) => evaluate(parse(s));
 
-export function evaluate(expr: expression): expression {
+
+export const interpret = (s: string) => evaluate(convertToIndices(parse(s)));
+
+export function evaluate(expr: expression<index>): expression<index> {
     let gen = evaluateGen(expr);
     let result;
     let next = gen.next();
@@ -38,22 +42,23 @@ export function evaluate(expr: expression): expression {
         result = next.value;
         next = gen.next();
     }
-    return result as expression;
+    return result as expression<index>;
 }
 
-export function* evaluateGen(expr: expression): IterableIterator<expression> {
-    yield expr;
+export function* evaluateGen(expr: expression<index>): IterableIterator<expression<index>> {
+    yield clone(expr);
 
     let t = new DepthFirst(expr);
+    t.afterExitScope = () => { if (t.stack[0]) done = t.forward() };
     let done = false;
 
     while (!done) {
         if (t.current instanceof Lambda) {
-            if (t.rightSibling) {
+            if (t.rightSibling != undefined) {
                 let result = bind(t.current, t.rightSibling);
                 t.up();
                 t.current = result;
-                yield t.expression;
+                yield clone(t.expression);
             } else {
                 t.enterScope();
             }
@@ -71,7 +76,7 @@ type node<T> = {ap: Application<T>, branchToNext: "left" | "right"};
 export class Traverser<T> {
     _current: expression<T>;
     stack: node<T>[];
-    contexts: {current: expression<T>, stack: node<T>[]}[] = [];
+    contexts: {current: Lambda<T>, stack: node<T>[]}[] = [];
 
     constructor(expr: expression<T>) {
         this._current = expr;
@@ -154,7 +159,7 @@ export class Traverser<T> {
 
     exitScope() {
         let outer = this.contexts.pop();
-        if (outer && outer.current instanceof Lambda && !this.stack.length) {
+        if (outer && !this.stack.length) {
             this.current = outer.current;
             this.stack = outer.stack;
         }
@@ -174,53 +179,52 @@ export class DepthFirst<T> extends Traverser<T> {
     }
 
     forward() {
-        if (this.current instanceof Application) this.left();
-        else {
-            let above = last(this.stack);
-            while (above && above.branchToNext == "right") {
-                this.up();
-                above = last(this.stack);
-            }
-            if (above) {
-                this.up();
-                this.right();
-            } else {
-                return this.exitScopes();
-            }
+        if (this.current instanceof Application) {
+            this.left();
+            return false;
+        } else return this.nextBranch();
+    }
+
+    nextBranch() {
+        let above = last(this.stack);
+        while (above && above.branchToNext == "right") {
+            this.up();
+            above = last(this.stack);
+        }
+        if (above) {
+            this.up();
+            this.right();
+        } else {
+            return this.exitScopes();
         }
 
         return false;
     }
 }
 
-export function bind(lambda: Lambda, expr: expression): expression {
-    function replaceInExpression(current: expression): expression {
-        if (current instanceof Lambda) {
-            if (current.head == lambda.head) {
-                return current;
-            } else {
-                return new Lambda(
-                    current.head,
-                    replaceInExpression(current.body)
-                );
-            }
-        } else if (current instanceof Application) {
-            return new Application(
-                replaceInExpression(current.a),
-                replaceInExpression(current.b)
-            );
-        } else {
-            return current == lambda.head ? expr : current;
-        }
+export function bind(lambda: Lambda<index>, expr: expression<index>): expression<index> {
+    const incrementFreeBy = (expr: expression<index>, n: number) => {
+        return mapVariables(expr, (current, bindings) => {
+            return current >= bindings.length ? current + n : current;
+        })
     }
-        return replaceInExpression(lambda.body);
+
+    return mapVariables(lambda.body, (current, bindings) => {
+        if (current == bindings.length) {
+            return incrementFreeBy(clone(expr), bindings.length);
+        } else if (current > bindings.length){
+            return current - 1; // decrement free variables
+        } else {
+            return current;
+        }
+    });
 }
 
 // indices
 
 export function convertToIndices(expr: expression<name>): expression<index> {
-    return mapExpr(expr, (current, bindings) => {
-        let index = bindings.indexOf(current);
+    return mapVariables(expr, (current, bindings) => {
+        let index = bindings.lastIndexOf(current);
         if (index >= 0) return bindings.length - 1 - index;
         else return ALPHABET.indexOf(current) + bindings.length;
     })
@@ -229,36 +233,11 @@ export function convertToIndices(expr: expression<name>): expression<index> {
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 
 export function convertToNames(expr: expression<index>): expression<name> {
-    return mapExpr(expr, (current, bindings) => {
-        let index = -(current + 1);
+    return mapVariables(expr, (current, bindings) => {
+        let index = bindings.length - 1 - current;
         if (bindings[index]) return bindings[index];
         else return ALPHABET[current - bindings.length];
     })
-}
-
-function mapExpr<A, B>(expr: expression<A>, f: (c: A, bs: name[]) => B): expression<B> {
-    let exprToModify: expression<A | B> = expr;
-    let t = new DepthFirst(exprToModify);
-    let bindings: name[] = [];
-    t.afterExitScope = () => {
-        bindings.pop();
-        if (t.stack[0]) done = t.forward();
-    }
-
-    let done = false;
-    while (!done) {
-        if (t.current instanceof Lambda) {
-            bindings.push(t.current.head)
-            t.enterScope();
-        } else {
-            if (t.current instanceof Application) {}
-            else t.current = f(t.current as A, bindings);
-
-            done = t.forward();
-        }
-    }
-
-    return t.current as expression<B>;
 }
 
 // printing
@@ -314,4 +293,52 @@ const Lang = P.createLanguage<{
 
 function last(array: any[]): any {
     return array[array.length - 1];
+}
+
+function mapVariables<A, B>(expr: expression<A>, f: (c: A, bs: name[]) => expression<B>): expression<B> {
+    let exprToModify: expression<A | B> = clone(expr);
+    let t = new DepthFirst(exprToModify);
+    let bindings: name[] = [];
+    t.afterExitScope = () => {
+        bindings.pop();
+        if (t.stack[0]) done = t.forward();
+    }
+
+    let done = false;
+    while (!done) {
+        if (t.current instanceof Lambda) {
+            bindings.push(t.current.head)
+            t.enterScope();
+        } else {
+            if (t.current instanceof Application) {
+                done = t.forward();
+            } else {
+                t.current = f(t.current as A, bindings);
+                done = t.nextBranch();
+            }
+        }
+    }
+
+    return t.current as expression<B>;
+}
+
+export function clone<T>(expr: expression<T>): expression<T> {
+    let t = new DepthFirst(expr);
+    t.afterExitScope = () => { if (t.stack[0]) done = t.forward() };
+
+    let done = false;
+    while (!done) {
+        if (t.current instanceof Lambda) {
+            t.current = new Lambda(t.current.head, t.current.body);
+            t.enterScope();
+        } else {
+            if (t.current instanceof Application) {
+                t.current = new Application(t.current.a, t.current.b);
+            }
+
+            done = t.forward();
+        }
+    }
+
+    return t.current;
 }
