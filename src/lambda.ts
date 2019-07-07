@@ -49,7 +49,6 @@ export function* evaluateGen(expr: expression<index>): IterableIterator<expressi
     yield clone(expr);
 
     let t = new DepthFirst(expr);
-    t.afterExitScope = () => { if (t.stack[0]) done = t.forward() };
     let done = false;
 
     while (!done) {
@@ -167,25 +166,32 @@ export class Traverser<T> {
 }
 
 export class DepthFirst<T> extends Traverser<T> {
-    afterExitScope: (() => any) | undefined;
+    forwardAfterScopesExit: boolean;
+    afterScopeExit: undefined | (() => any);
 
-    exitScopes() {
+    constructor(expr: expression<T>) {
+        super(expr);
+        this.forwardAfterScopesExit = true;
+    }
+
+    exitScopes(): boolean {
         while (!this.stack[0] && this.contexts[0]) {
             this.exitScope();
-            if (this.afterExitScope) this.afterExitScope();
+            if (this.afterScopeExit) this.afterScopeExit();
+            if (this.forwardAfterScopesExit) this.forward();
         }
 
         return !this.stack[0] && !this.contexts[0];
     }
 
-    forward() {
+    forward(): boolean {
         if (this.current instanceof Application) {
             this.left();
             return false;
         } else return this.nextBranch();
     }
 
-    nextBranch() {
+    nextBranch(): boolean {
         let above = last(this.stack);
         while (above && above.branchToNext == "right") {
             this.up();
@@ -299,9 +305,8 @@ function mapVariables<A, B>(expr: expression<A>, f: (c: A, bs: name[]) => expres
     let exprToModify: expression<A | B> = clone(expr);
     let t = new DepthFirst(exprToModify);
     let bindings: name[] = [];
-    t.afterExitScope = () => {
+    t.afterScopeExit = () => {
         bindings.pop();
-        if (t.stack[0]) done = t.forward();
     }
 
     let done = false;
@@ -324,7 +329,6 @@ function mapVariables<A, B>(expr: expression<A>, f: (c: A, bs: name[]) => expres
 
 export function clone<T>(expr: expression<T>): expression<T> {
     let t = new DepthFirst(expr);
-    t.afterExitScope = () => { if (t.stack[0]) done = t.forward() };
 
     let done = false;
     while (!done) {
