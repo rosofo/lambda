@@ -70,25 +70,27 @@ function setAndEvaluate(newExpr: string) {
 
 class ResultGenerator {
     gen: IterableIterator<L.expression<L.index>>;
-    resultElement: any;
+    element: string;
     results: string[];
     constructor(expr: string, element: string) {
         let c = L.convertToIndices(L.parse(expr));
         this.gen = L.evaluateGen(c);
         this.results = [];
-        this.resultElement = d3.select(element).selectAll("div")
+        this.element = element;
     }
 
     next(n: number = 1) {
+        let resultElement = d3.select(this.element).selectAll("div")
+
         for (let i = 0; i < n; i++) {
             let next = this.gen.next();
             if (next.value != undefined) this.results.push(L.print(L.convertToNames(next.value)));
         }
 
-        this.resultElement
+        resultElement
             .data(this.results)
             .join("div")
-            .text((d: string, i: number) => `${i}: ${d as string}`);
+                .text((d: string, i: number) => `${i}: ${d}`);
     }
 }
 
