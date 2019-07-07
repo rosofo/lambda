@@ -57,6 +57,7 @@ export function* evaluateGen(expr: expression<index>): IterableIterator<expressi
                 let result = bind(t.current, t.rightSibling);
                 t.up();
                 t.current = result;
+                if (t.current instanceof Lambda) t.current = renameHead(t.current);
                 yield clone(t.expression);
             } else {
                 t.enterScope();
@@ -226,6 +227,17 @@ export function bind(lambda: Lambda<index>, expr: expression<index>): expression
     });
 }
 
+export function renameHead(lambda: Lambda<index>): Lambda<index> {
+    while (findBy(lambda.body, (current, bindings) => {
+        let freeEquivalentofHead = ALPHABET.indexOf(lambda.head) + bindings.length + 1;
+        return current === freeEquivalentofHead;
+    })) {
+        lambda.head = ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
+    }
+
+    return lambda;
+}
+
 // indices
 
 export function convertToIndices(expr: expression<name>): expression<index> {
@@ -325,6 +337,31 @@ function mapVariables<A, B>(expr: expression<A>, f: (c: A, bs: name[]) => expres
     }
 
     return t.current as expression<B>;
+}
+
+function findBy<T>(expr: expression<T>, predicate: (current: T, bs: name[]) => boolean): T | null {
+    let t = new DepthFirst(expr);
+    let bindings: name[] = [];
+    t.afterScopeExit = () => {
+        bindings.pop();
+    }
+
+    let done = false;
+    while (!done) {
+        if (t.current instanceof Lambda) {
+            bindings.push(t.current.head)
+            t.enterScope();
+        } else {
+            if (t.current instanceof Application) {
+                done = t.forward();
+            } else {
+                if (predicate(t.current, bindings)) return t.current;
+                done = t.nextBranch();
+            }
+        }
+    }
+
+    return null;
 }
 
 export function clone<T>(expr: expression<T>): expression<T> {

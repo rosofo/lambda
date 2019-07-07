@@ -73,6 +73,15 @@ describe('bind', function() {
     });
 });
 
+describe('renameHead', function() {
+    it("doesn't capture y in `(\\ny.n)y`", function() {
+        let input = L.convertToIndices(L.parse("(\\ny.n)y")) as L.Application<L.index>;
+        let renamed = L.renameHead(L.bind(input.a as L.Lambda<L.index>, input.b) as L.Lambda<L.index>)
+
+        expect(renamed.head).not.toBe('y')
+    });
+})
+
 describe('parse', function() {
     it("uncurries `\\xy.xy` to `\\x.(\\y.xy)`", function() {
         let result = L.parse('\\xy.xy');
