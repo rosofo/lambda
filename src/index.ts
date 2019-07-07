@@ -12,19 +12,18 @@ main.style("text-align", "center")
     .style("top", "40%")
     .style("transform", "translateY(40%)")
     .style("-webkit-transform", "translateY(40%)")
-    .style("-ms-transform", "translateY(40%)")
-    .append("input")
-      .style("width", "40%")
-      .attr("type", "text")
-      .attr("spellcheck", "false")
-      .attr("id", "expression")
-      .on("input", syntaxIndicate)
+    .style("-ms-transform", "translateY(40%)");
 
-let expr = d3.select("#expression")
-    .on("change", () => {
+let expr = main.append("input")
+    .style("width", "40%")
+    .attr("type", "text")
+    .attr("spellcheck", "false")
+    .attr("id", "expression")
+    .on("input", () => {
+        syntaxIndicate();
         resultGenerator = new ResultGenerator(expr.property("value"), "#result");
         resultGenerator.next(20);
-    })
+    });
 
 
 let result = main.append("div")
@@ -83,7 +82,7 @@ class ResultGenerator {
     next(n: number = 1) {
         for (let i = 0; i < n; i++) {
             let next = this.gen.next();
-            if (next.value) this.results.push(L.print(L.convertToNames(next.value)));
+            if (next.value != undefined) this.results.push(L.print(L.convertToNames(next.value)));
         }
 
         this.resultElement

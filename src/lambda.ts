@@ -248,7 +248,7 @@ export function convertToNames(expr: expression<index>): expression<name> {
 
 // printing
 
-export function print(expr: expression): string {
+export function print<T>(expr: expression<T>): string {
     if (expr instanceof Lambda) return `\\${expr.head}.${print(expr.body)}`;
     else if (expr instanceof Application) {
         let a = print(expr.a), b = print(expr.b);
