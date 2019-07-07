@@ -1,9 +1,19 @@
 import * as P from 'parsimmon';
 
+const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
+
 export const identity = "(\\x.x)"
 export const succ = "(\\wyx.y(wyx))";
 export const zero = "(\\sz.z)";
 export const add = (a: string, b: string) => a + "(\\mnfx.mf(nfx))" + b;
+
+export function numberExpression(n: number): expression {
+    let expr: expression = 'z'
+    for (let i = 0; i < n; i++) {
+        expr = new Application('s', expr);
+    }
+    return new Lambda('s', new Lambda('z', expr));
+}
 
 // types
 
@@ -228,11 +238,12 @@ export function bind(lambda: Lambda<index>, expr: expression<index>): expression
 }
 
 export function renameHead(lambda: Lambda<index>): Lambda<index> {
-    while (findBy(lambda.body, (current, bindings) => {
-        let freeEquivalentofHead = ALPHABET.indexOf(lambda.head) + bindings.length + 1;
-        return current === freeEquivalentofHead;
-    })) {
-        lambda.head = ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
+    for (let letter of ALPHABET) {
+        if (!findBy(lambda.body, (current, bindings) => {
+            let freeEquivalentofHead = ALPHABET.indexOf(lambda.head) + bindings.length + 1;
+            return current === freeEquivalentofHead;
+        })) break;
+        else lambda.head = letter;
     }
 
     return lambda;
@@ -248,7 +259,6 @@ export function convertToIndices(expr: expression<name>): expression<index> {
     })
 }
 
-const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 
 export function convertToNames(expr: expression<index>): expression<name> {
     return mapVariables(expr, (current, bindings) => {
@@ -275,7 +285,7 @@ export function print<T>(expr: expression<T>): string {
 // parsing
 
 export function parse(string: string): expression {
-    return Lang.Term.tryParse(string.replace(/\s/g, ''));
+    return Lang.Term.tryParse(string);
 }
 
 const Lang = P.createLanguage<{
@@ -283,11 +293,12 @@ const Lang = P.createLanguage<{
     Lambda: Lambda,
     Application: expression,
     Name: name,
-    Atom: expression
+    Atom: expression,
+    Constant: expression
 }>({
     Term: r => r.Application.or(r.Lambda),
     Lambda: r => {
-        return P.seq(P.oneOf('\\'), r.Name.atLeast(1), P.oneOf('.'), r.Term)
+        return P.seq(P.oneOf('\\'), r.Name.trim(P.optWhitespace).atLeast(1), P.oneOf('.'), r.Term)
             .map(result => {
                 let names = result[1]
                 return names.reduceRight((acc, name) => {
@@ -303,9 +314,28 @@ const Lang = P.createLanguage<{
                 });
             })
     },
-    Name: () => P.letter,
-    Atom: r => P.alt(r.Term.wrap(P.string('('), P.string(')')), r.Name, r.Lambda)
+    Name: () => P.regexp(/[a-z]/),
+    Atom: r => P.alt(r.Term.wrap(P.string('('), P.string(')')), r.Name, r.Lambda, r.Constant)
+        .trim(P.optWhitespace),
+    Constant: _ => P.seq(P.regexp(/[A-Z]/i), P.letter.many())
+        .map(result => {
+            let c;
+            if (result instanceof Array) {
+                result[1].unshift(result[0]);
+                c = constants.get(result[1].join(''));
+            } else c = constants.get(result);
+            if (c) return c;
+            else throw new Error("Unknown constant");
+        }).or(P.digit.atLeast(1)
+              .map(result => {
+                  return numberExpression(Number(result.join('')));
+              }))
 });
+
+let constants: Map<string, expression> = new Map([
+    ['Succ', parse(succ)],
+    ['Add', parse("(\\ab.(a (\\wyx.y(wyx))) b)")]
+]);
 
 // helpers
 

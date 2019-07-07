@@ -41,9 +41,9 @@ type example = {name: string, expr: string};
 
 let examples = [
     {name: "Number one defined as successor applied to zero",
-     expr: "(\\wyx.y(wyx))\\sz.z"},
+     expr: "Succ 0"},
     {name: "Add two and two",
-     expr: "(\\ab.(a (\\wyx.y(wyx))) b) (\\sz.s(sz)) (\\sz.s(sz))"},
+     expr: "Add 2 2"},
     {name: "Multiply three by four",
      expr: "(\\nmh.n(mh))(\\fx.f(f(fx)))(\\gy.g(g(g(gy))))"},
     {name: "Ω (Omega) - diverges!",
