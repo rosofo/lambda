@@ -4,16 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-      "test": "jest",
-      "testWithCoverage": "jest --coverage",
-      "build": "parcel build src/index.html --out-dir docs --public-url ./"
+    "test": "jest",
+    "testWithCoverage": "jest --coverage",
+    "build": "parcel build src/index.html --out-dir docs --public-url ./"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "d3": "^5.9.2",
+    "d3": "^5.9.7",
     "parcel": "^1.12.3",
-    "parsimmon": "^1.12.0"
+    "parsimmon": "^1.12.1"
   },
   "devDependencies": {
     "@types/d3": "^5.7.2",
@@ -23,6 +23,6 @@
     "cssnano": "^4.1.10",
     "jest": "^24.8.0",
     "ts-jest": "^24.0.2",
-    "typescript": "^3.5.2"
+    "typescript": "^3.5.3"
   }
 }
